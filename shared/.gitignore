@@ -1,0 +1,24 @@
+# Local environments and secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+
+# Shared generated artifacts and data
+data/
+datasets/
+models/
+artifacts/
+tmp/
+cache/
+
+# Keep optional placeholders
+!.gitkeep

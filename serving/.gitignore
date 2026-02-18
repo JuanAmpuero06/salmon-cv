@@ -1,0 +1,32 @@
+# Local environments and secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+
+# Runtime data and model artifacts
+data/
+datasets/
+uploads/
+models/
+artifacts/
+mlruns/
+mlartifacts/
+
+# Common model files
+*.onnx
+*.pt
+*.pth
+*.pkl
+*.joblib
+
+# Keep optional placeholders
+!.gitkeep

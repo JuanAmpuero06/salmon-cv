@@ -1,0 +1,8 @@
+# Elegimos 1 video/clip para el primer EDA (simple y controlado)
+coco_json_relpath: "data/01_raw/noaa_salmon_pollock_2019_2020/annotated_data/2019_t15_vid1_16710_16769/2019_t15_vid1_16710_16769.json"
+frames_dirname: "frames"
+n_samples: 12
+seed: 42
+
+# dónde guardaremos imágenes con bounding boxes dibujadas
+output_dir_relpath: "data/08_reporting/eda_samples"

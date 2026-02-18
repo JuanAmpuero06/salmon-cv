@@ -1,0 +1,50 @@
+# Global local environment
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+.python-version
+
+# Python caches and build artifacts
+**/__pycache__/
+**/*.py[cod]
+**/*.so
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/dist/
+**/build/
+**/*.egg-info/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Common secret and certificate files
+*.pem
+*.key
+*.p12
+*.crt
+**/conf/local/**
+**/conf/**/credentials*
+
+# Large/local data and model artifacts
+training/data/
+serving/data/
+serving/models/
+serving/artifacts/
+shared/data/
+shared/models/
+shared/artifacts/
+
+# ML experiment outputs
+mlruns/
+mlartifacts/
