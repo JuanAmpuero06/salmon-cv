@@ -2,3 +2,5 @@ ipython>=8.10
 jupyterlab>=3.0
 notebook
 kedro~=1.2.0
+kedro-datasets
+opencv-python-headless>=4.10.0

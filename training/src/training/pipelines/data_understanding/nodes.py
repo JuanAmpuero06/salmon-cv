@@ -13,7 +13,9 @@ def _load_coco(coco_json_path: Path) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _index_coco(coco: Dict[str, Any]) -> Tuple[Dict[int, Dict[str, Any]], Dict[int, List[Dict[str, Any]]], Dict[int, str]]:
+def _index_coco(
+    coco: Dict[str, Any]
+) -> Tuple[Dict[int, Dict[str, Any]], Dict[int, List[Dict[str, Any]]], Dict[int, str]]:
     images_by_id = {img["id"]: img for img in coco.get("images", [])}
 
     ann_by_image_id: Dict[int, List[Dict[str, Any]]] = {}
@@ -30,6 +32,32 @@ def _draw_bbox(img, bbox_xywh, label: str):
     x2, y2 = int(round(x + w)), int(round(y + h))
     cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cv2.putText(img, label, (x1, max(0, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+
+def resolve_image_path(frames_dir: Path, file_name: str | None) -> Path | None:
+    """
+    En este dataset, `file_name` viene como URL completa:
+    https://.../frames/frame_000000.PNG
+
+    Esta función normaliza tomando solo el nombre final:
+    frame_000000.PNG
+    """
+    if not file_name:
+        return None
+
+    # Si viene como URL o ruta con subcarpetas, esto extrae el último componente
+    base = Path(file_name).name  # -> frame_000000.PNG
+    p = frames_dir / base
+    if p.exists():
+        return p
+
+    # Fallback por si algún clip viene sin extensión o hay mismatch raro
+    stem = Path(base).stem
+    candidates = list(frames_dir.glob(stem + ".*"))
+    if candidates:
+        return candidates[0]
+
+    return None
 
 
 def create_coco_eda_samples(
@@ -71,15 +99,8 @@ def create_coco_eda_samples(
     saved: List[Dict[str, Any]] = []
     for item in sample_items:
         file_name = item.get("file_name")
-        img_path = frames_dir / file_name if file_name else None
-
-        # fallback: si el COCO usa file_name distinto, intentamos encontrar por patrón
-        if img_path is None or not img_path.exists():
-            # intenta con el nombre exacto en frames/
-            candidates = list(frames_dir.glob(file_name)) if file_name else []
-            img_path = candidates[0] if candidates else None
-
-        if img_path is None or not img_path.exists():
+        img_path = resolve_image_path(frames_dir, file_name)
+        if img_path is None:
             continue
 
         img = cv2.imread(str(img_path))
@@ -88,7 +109,7 @@ def create_coco_eda_samples(
 
         anns = ann_by_image_id.get(item["id"], [])
         for ann in anns:
-            bbox = ann.get("bbox")  # COCO bbox = [x,y,width,height] en pixeles :contentReference[oaicite:2]{index=2}
+            bbox = ann.get("bbox")  # COCO bbox = [x,y,width,height] en pixeles
             if not bbox or len(bbox) != 4:
                 continue
             cat_id = ann.get("category_id")
