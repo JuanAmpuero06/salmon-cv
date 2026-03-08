@@ -37,6 +37,7 @@ Thumbs.db
 **/conf/**/credentials*
 
 # Large/local data and model artifacts
+data/
 training/data/
 serving/data/
 serving/models/

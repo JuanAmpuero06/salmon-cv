@@ -1,0 +1,3 @@
+annotated_data_root_relpath: "data/01_raw/noaa_salmon_pollock_2019_2020/annotated_data"
+frames_dirname: "frames"
+seed: 42

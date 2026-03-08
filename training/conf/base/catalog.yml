@@ -1,3 +1,18 @@
 eda_manifest:
   type: kedro_datasets.json.JSONDataset
   filepath: data/08_reporting/eda_manifest.json
+
+# Este dataset se utiliza para almacenar un resumen de los resultados del entrenamiento del modelo CLIP, incluyendo métricas de rendimiento, configuraciones de entrenamiento y cualquier otra información relevante que pueda ser útil para el análisis y la presentación de resultados.
+clip_summary:
+  type: kedro_datasets.json.JSONDataset
+  filepath: data/08_reporting/clip_summary.json
+
+# Este dataset se utiliza para almacenar un inventario de los clips de video utilizados en el proyecto, incluyendo información como el nombre del clip, su duración, la cantidad de frames, y cualquier otra información relevante que pueda ser útil para el análisis y la presentación de resultados.
+dataset_clip_inventory:
+  type: kedro_datasets.json.JSONDataset
+  filepath: data/08_reporting/dataset_clip_inventory.json
+
+# Este dataset se utiliza para almacenar un manifiesto de los datos de entrenamiento en formato YOLO, incluyendo información sobre las imágenes, las anotaciones, y cualquier otra información relevante que pueda ser útil para el análisis y la presentación de resultados.
+yolo_dataset_manifest:
+  type: kedro_datasets.json.JSONDataset
+  filepath: data/08_reporting/yolo_dataset_manifest.json

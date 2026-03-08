@@ -1,0 +1,16 @@
+output_yolo_root_relpath: "data/05_model_input/yolo_salmon_pollock"
+
+target_classes:
+  - "Salmon"
+  - "Pollock"
+
+class_to_idx:
+  Salmon: 0
+  Pollock: 1
+
+split:
+  train: 0.7
+  val: 0.2
+  test: 0.1
+
+copy_images: true
