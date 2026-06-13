@@ -116,13 +116,11 @@ def prepare_yolo_dataset(
     if not clip_jsons:
         raise ValueError("No se encontraron archivos JSON de clips.")
 
-    split_map = _split_clip_jsons(
-        clip_jsons=clip_jsons,
-        train_ratio=split["train"],
-        val_ratio=split["val"],
-        test_ratio=split["test"],
-        seed=seed,
-    )
+    # Limpiar directorios previos para evitar acumulación de archivos viejos
+    if (output_root / "images").exists():
+        shutil.rmtree(output_root / "images")
+    if (output_root / "labels").exists():
+        shutil.rmtree(output_root / "labels")
 
     # crear estructura YOLO
     for split_name in ["train", "val", "test"]:
@@ -140,17 +138,41 @@ def prepare_yolo_dataset(
         "test": {"clips": 0, "images": 0, "labels": 0},
     }
 
-    for split_name, json_paths in split_map.items():
-        split_stats[split_name]["clips"] = len(json_paths)
+    train_ratio = split["train"]
+    val_ratio = split["val"]
+    test_ratio = split["test"]
 
-        for coco_path in json_paths:
-            coco = _load_coco(coco_path)
-            images_by_id, ann_by_image_id, cat_name_by_id = _index_coco(coco)
+    if abs((train_ratio + val_ratio + test_ratio) - 1.0) > 1e-6:
+        raise ValueError("Los porcentajes de split deben sumar 1.0")
 
-            clip_dir = coco_path.parent
-            frames_dir = clip_dir / frames_dirname
+    # Procesar cada clip y dividir sus frames cronológicamente
+    for coco_path in clip_jsons:
+        coco = _load_coco(coco_path)
+        images_by_id, ann_by_image_id, cat_name_by_id = _index_coco(coco)
 
-            for image_id, img_info in images_by_id.items():
+        clip_dir = coco_path.parent
+        frames_dir = clip_dir / frames_dirname
+
+        # Obtener y ordenar las imágenes cronológicamente
+        image_items = list(images_by_id.values())
+        image_items.sort(key=lambda x: x.get("file_name", ""))
+
+        n_images = len(image_items)
+        n_train = int(n_images * train_ratio)
+        n_val = int(n_images * val_ratio)
+
+        # Particionar los frames por segmento temporal
+        partitioned_images = {
+            "train": image_items[:n_train],
+            "val": image_items[n_train:n_train + n_val],
+            "test": image_items[n_train + n_val:],
+        }
+
+        for split_name, split_images in partitioned_images.items():
+            if len(split_images) > 0:
+                split_stats[split_name]["clips"] += 1
+
+            for img_info in split_images:
                 file_name = img_info.get("file_name")
                 img_path = _resolve_image_path(frames_dir, file_name)
                 if img_path is None:
@@ -159,7 +181,7 @@ def prepare_yolo_dataset(
                 img_width = int(img_info["width"])
                 img_height = int(img_info["height"])
 
-                anns = ann_by_image_id.get(image_id, [])
+                anns = ann_by_image_id.get(img_info["id"], [])
                 yolo_lines: List[str] = []
 
                 for ann in anns:

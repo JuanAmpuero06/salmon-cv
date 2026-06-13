@@ -16,3 +16,9 @@ dataset_clip_inventory:
 yolo_dataset_manifest:
   type: kedro_datasets.json.JSONDataset
   filepath: data/08_reporting/yolo_dataset_manifest.json
+
+
+# Este dataset se utiliza para almacenar un manifiesto de las ejecuciones de entrenamiento del modelo, incluyendo información sobre las configuraciones de entrenamiento, las métricas de rendimiento, y cualquier otra información relevante que pueda ser útil para el análisis y la presentación de resultados.
+train_run_manifest:
+  type: kedro_datasets.json.JSONDataset
+  filepath: data/08_reporting/train_run_manifest.json

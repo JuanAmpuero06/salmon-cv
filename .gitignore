@@ -45,6 +45,8 @@ serving/artifacts/
 shared/data/
 shared/models/
 shared/artifacts/
+*.pt
+*.pth
 
 # ML experiment outputs
 mlruns/
