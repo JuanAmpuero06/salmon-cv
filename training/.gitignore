@@ -15,6 +15,10 @@ data/**
 # except their sub-folders
 !data/**/
 
+# unignore .dvc files and .gitignore inside data/ for DVC versioning
+!data/**/*.dvc
+!data/**/.gitignore
+
 # also keep all .gitkeep files
 !.gitkeep
 
@@ -161,7 +165,12 @@ venv.bak/
 # mlflow local runs
 mlruns/
 mlartifacts/
+mlflow.db
+mlflow.db-journal
 
 # local tooling caches
 .pytest_cache/
 .ruff_cache/
+
+# YOLO local runs
+runs/

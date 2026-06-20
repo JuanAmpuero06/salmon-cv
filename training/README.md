@@ -99,3 +99,32 @@ To automatically strip out all output cell contents before committing to `git`, 
 ## Package your Kedro project
 
 [Further information about building project documentation and packaging your project](https://docs.kedro.org/en/stable/deploy/package_a_project/#package-an-entire-kedro-project)
+
+---
+
+## 📊 MLOps: MLflow and DVC (Zero Cost)
+
+This project integrates **MLflow** for local experiment tracking and **DVC** for data version control.
+
+### MLflow: Local Experiment Tracking
+
+Every training run automatically registers parameters, metrics (precision, recall, mAP50, mAP50-95), confusion matrices, and model weights to a local MLflow tracking server.
+
+To visualize your experiments:
+1. Run `training/start_mlflow.bat` (or run `mlflow server --backend-store-uri sqlite:///mlflow.db` from the `training` directory). This starts the MLflow server locally on `http://127.0.0.1:5000`.
+2. Open your browser and go to `http://127.0.0.1:5000` to view the comparison dashboard, learning curves, and model registry.
+
+### DVC: Data Version Control
+
+Raw datasets are tracked using DVC to keep Git history clean.
+* To pull data: `dvc pull` (automatically downloads versioned data).
+* To push data: `dvc push` (saves local changes to the remote cache).
+* Default remote is a local folder `../dvc_remote`.
+
+To switch to Google Drive (free 15GB):
+1. Create a folder in Google Drive and copy its folder ID from the URL.
+2. Run the following command:
+   ```bash
+   dvc remote add -d gdrive_remote gdrive://<FOLDER_ID>
+   ```
+

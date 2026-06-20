@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import datetime
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Dict
 
@@ -124,6 +125,28 @@ def train_yolo_detector(
     if resume and not resume_ckpt.exists():
         print(f"[WARNING] Se especifico 'resume=True' pero no se encontro el checkpoint en '{resume_ckpt}'. Iniciando entrenamiento desde cero.")
 
+    # Configurar MLflow local
+    mlflow_active = False
+    try:
+        import mlflow
+        mlflow.set_tracking_uri("sqlite:///mlflow.db")
+        mlflow.set_experiment("salmon-cv-detection")
+        mlflow.start_run(run_name=run_name)
+        mlflow_active = True
+        print(f"[INFO] Iniciando tracking de experimento en MLflow local. Run Name: {run_name}")
+        mlflow.log_params({
+            "model_name_base": model_name,
+            "imgsz": imgsz,
+            "epochs": epochs,
+            "batch": batch,
+            "patience": patience,
+            "device": device,
+            "pretrained": pretrained,
+            "resume": resume,
+        })
+    except ImportError:
+        print("[WARNING] mlflow no esta instalado. Omitiendo tracking de MLflow.")
+
     if should_resume:
         print(f"Reanudando entrenamiento desde el checkpoint: {resume_ckpt}")
         model = YOLO(str(resume_ckpt))
@@ -193,6 +216,90 @@ def train_yolo_detector(
     print(f"Resultado del experimento guardado en el historico:")
     print(f" - JSON: {history_json_path.resolve()}")
     print(f" - CSV: {history_csv_path.resolve()}")
+
+    # Registrar metricas y artefactos en MLflow
+    if mlflow_active:
+        try:
+            import mlflow
+            # Registrar metricas consolidadas (mejor epoca)
+            if metrics:
+                mlflow.log_metrics({
+                    "best_epoch": metrics.get("best_epoch", 0),
+                    "metrics_precision": metrics.get("metrics_precision", 0.0),
+                    "metrics_recall": metrics.get("metrics_recall", 0.0),
+                    "metrics_mAP50": metrics.get("metrics_mAP50", 0.0),
+                    "metrics_mAP50_95": metrics.get("metrics_mAP50_95", 0.0),
+                    "train_box_loss": metrics.get("train_box_loss", 0.0),
+                    "train_cls_loss": metrics.get("train_cls_loss", 0.0),
+                    "val_box_loss": metrics.get("val_box_loss", 0.0),
+                    "val_cls_loss": metrics.get("val_cls_loss", 0.0),
+                })
+            
+            # Registrar la curva completa epoch-by-epoch
+            if results_csv.exists():
+                with results_csv.open("r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        cleaned_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
+                        epoch_val = int(cleaned_row.get("epoch", 0))
+                        for key, val in cleaned_row.items():
+                            if key in ["epoch", "time"]:
+                                continue
+                            try:
+                                key_clean = key.replace("(", "").replace(")", "")
+                                mlflow.log_metric(key_clean, float(val), step=epoch_val)
+                            except ValueError:
+                                pass
+            
+            # Registrar imagenes de validacion y curvas como artefactos
+            if run_dir.exists():
+                for filename in ["confusion_matrix.png", "confusion_matrix_normalized.png", "results.png", "labels.jpg", "results.csv"]:
+                    filepath = run_dir / filename
+                    if filepath.exists():
+                        mlflow.log_artifact(str(filepath), artifact_path="plots")
+                
+                # Buscar imagenes val_batch*_pred.jpg y registrarlas
+                for filepath in run_dir.glob("val_batch*_pred.jpg"):
+                    mlflow.log_artifact(str(filepath), artifact_path="validation_predictions")
+                for filepath in run_dir.glob("val_batch*_labels.jpg"):
+                    mlflow.log_artifact(str(filepath), artifact_path="validation_labels")
+                    
+            # Registrar el modelo final best.pt
+            if best_pt.exists():
+                mlflow.log_artifact(str(best_pt), artifact_path="model_weights")
+                
+                # Exportar y registrar ONNX automáticamente (Fase 3: MLOps)
+                try:
+                    serving_weights_dir = project_root.parent / "serving" / "weights"
+                    serving_weights_dir.mkdir(parents=True, exist_ok=True)
+                    dest_onnx = serving_weights_dir / "model.onnx"
+                    print(f"[INFO] Exportando automáticamente a ONNX: {dest_onnx}")
+                    best_model = YOLO(str(best_pt))
+                    onnx_path_temp = best_model.export(format="onnx", imgsz=imgsz, dynamic=True)
+                    if onnx_path_temp:
+                        temp_path = Path(onnx_path_temp)
+                        if dest_onnx.exists():
+                            dest_onnx.unlink()
+                        shutil.copy2(temp_path, dest_onnx)
+                        # También registrar en MLflow
+                        mlflow.log_artifact(str(dest_onnx), artifact_path="model_onnx")
+                        # Borrar temporal local creado por yolo en la misma carpeta del best.pt
+                        if temp_path.exists():
+                            temp_path.unlink()
+                        print(f"[INFO] Modelo ONNX copiado a {dest_onnx} y registrado en MLflow.")
+                    else:
+                        print("[WARNING] Falló la exportación automática a ONNX.")
+                except Exception as e:
+                    print(f"[WARNING] Error en exportación automática a ONNX: {e}")
+                
+            mlflow.end_run()
+            print("[INFO] Tracking de MLflow completado con exito.")
+        except Exception as e:
+            print(f"[WARNING] Error al registrar metricas/artefactos en MLflow: {e}")
+            try:
+                mlflow.end_run(status="FAILED")
+            except Exception:
+                pass
 
     return {
         "data_yaml": str(data_yaml_path) if data_yaml_path.exists() else None,

@@ -38,7 +38,11 @@ Thumbs.db
 
 # Large/local data and model artifacts
 data/
-training/data/
+training/data/**
+!training/data/
+!training/data/**/
+!training/data/**/*.dvc
+!training/data/**/.gitignore
 serving/data/
 serving/models/
 serving/artifacts/
@@ -51,3 +55,13 @@ shared/artifacts/
 # ML experiment outputs
 mlruns/
 mlartifacts/
+mlflow.db
+mlflow.db-journal
+
+# Large videos (exclude test video)
+*.mp4
+!serving/test_video_1.mp4
+
+# Training runs
+training/runs/
+runs/

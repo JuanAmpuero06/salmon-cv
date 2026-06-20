@@ -1,21 +1,21 @@
 data_yaml_relpath: "data/05_model_input/yolo_salmon_pollock/data.yaml"
 
-model_name: "yolov8n.pt"
+model_name: "yolov8s.pt"
 imgsz: 512 
-epochs: 10 # número de épocas para entrenar el modelo
+epochs: 100 # número de épocas para entrenar el modelo
 batch: 4 # número de imágenes que se procesan juntas en cada iteración del entrenamiento.
 workers: 0 # número de procesos que se utilizan para cargar los datos durante el entrenamiento.
-patience: 5 
+patience: 10 
 device: "cpu"
 pretrained: true
 
 project_relpath: "data/06_models/yolo_runs"
-run_name: "baseline_yolov8n_cpu"
+run_name: "baseline_yolov8s_cpu"
 
 save: true
 save_period: 1
 plots: true
 verbose: true
 
-resume: false
-resume_checkpoint_relpath: "data/06_models/yolo_runs/baseline_yolov8n_cpu/weights/last.pt"
+resume: true # si se tiene un entrenamiento previo y se desea continuar desde ese punto. "True"= se reanuda el entrenamiento, "False"= se inicia un nuevo entrenamiento
+resume_checkpoint_relpath: "data/06_models/yolo_runs/baseline_yolov8s_cpu/weights/last.pt"

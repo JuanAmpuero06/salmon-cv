@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salmon-CV | Dashboard de Control Subacuático</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #070a13;
+            --panel-bg: rgba(15, 23, 42, 0.4);
+            --panel-border: rgba(255, 255, 255, 0.05);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            
+            /* Accents */
+            --accent-salmon: #ff7b7b;
+            --accent-salmon-glow: rgba(255, 123, 123, 0.35);
+            --accent-blue: #38bdf8;
+            --accent-blue-glow: rgba(56, 189, 248, 0.35);
+            
+            --neon-green: #10b981;
+            --neon-green-glow: rgba(16, 185, 129, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(255, 123, 123, 0.05) 0%, transparent 40%);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background-color: rgba(11, 15, 30, 0.8);
+            border-right: 1px solid var(--panel-border);
+            padding: 2.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+            backdrop-filter: blur(20px);
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--accent-salmon), var(--accent-blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 800;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .brand-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            list-style: none;
+        }
+
+        .nav-item {
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.03);
+            border-color: var(--panel-border);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.08) 0%, rgba(255, 123, 123, 0.02) 100%);
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1.5rem;
+        }
+
+        .header-title h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green-glow);
+            animation: pulse 1.8s infinite;
+        }
+
+        /* Panels / Cards */
+        .glass-panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Grid layouts */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Canvas / Frame Viewer */
+        .viewer-container {
+            position: relative;
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            background-color: #02040a;
+            border: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 16/9;
+        }
+
+        #video-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .placeholder-text {
+            position: absolute;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        /* Controls */
+        .control-bar {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.45);
+        }
+
+        .btn-secondary {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: var(--panel-border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent-salmon), #dc2626);
+            color: #fff;
+            box-shadow: 0 4px 15px var(--accent-salmon-glow);
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 123, 123, 0.45);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Counter Widget */
+        .counter-widget {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .counter-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 0.75rem;
+        }
+
+        .counter-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.2) 100%);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .counter-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .counter-card.salmon::before {
+            background-color: var(--accent-salmon);
+        }
+
+        .counter-card.pollock::before {
+            background-color: var(--accent-blue);
+        }
+
+        .counter-card-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .counter-card-value {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .counter-card.salmon .counter-card-value {
+            color: var(--accent-salmon);
+            text-shadow: 0 0 15px var(--accent-salmon-glow);
+        }
+
+        .counter-card.pollock .counter-card-value {
+            color: var(--accent-blue);
+            text-shadow: 0 0 15px var(--accent-blue-glow);
+        }
+
+        /* Drag & Drop Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--panel-border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.01);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-blue);
+            background-color: rgba(56, 189, 248, 0.02);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--accent-blue);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .progress-bar-bg {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--panel-border);
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-salmon));
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Active Learning Grid */
+        .active-learning-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .al-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.5rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .al-card {
+            background-color: rgba(15, 23, 42, 0.3);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .al-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .al-img-container {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background-color: #000;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .al-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .al-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: rgba(0, 0, 0, 0.75);
+            border: 1px solid var(--panel-border);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-salmon);
+        }
+
+        .al-details {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+        }
+
+        .al-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .al-meta {
+            color: var(--text-secondary);
+        }
+
+        /* Terminal Console Logs */
+        .console-container {
+            margin-top: 2rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .console-header {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .console-box {
+            background-color: #02040a;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #10b981;
+            height: 220px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="brand">
+            <div class="brand-logo">🐟</div>
+            <div class="brand-name">Salmon-CV</div>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-tab="realtime-tab">🎯 Inferencia WS</li>
+            <li class="nav-item" data-tab="video-tab">📼 Proceso Video</li>
+            <li class="nav-item" data-tab="active-tab">🔄 Active Learning</li>
+        </ul>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content">
+        <div class="header">
+            <div class="header-title">
+                <h1 id="tab-title-text">Monitoreo en Tiempo Real</h1>
+                <p id="tab-subtitle-text">Inferencia fluida por WebSockets usando ONNX Runtime & IoU Tracker</p>
+            </div>
+            <div class="system-status">
+                <span class="status-dot"></span>
+                <span>Servidor Activo (ONNX)</span>
+            </div>
+        </div>
+
+        <!-- TAB 1: REAL-TIME WEBSOCKET INFERENCE -->
+        <div id="realtime-tab" class="tab-content active">
+            <div class="dashboard-grid">
+                <div class="glass-panel">
+                    <div class="viewer-container">
+                        <canvas id="video-canvas"></canvas>
+                        <div id="canvas-placeholder" class="placeholder-text">
+                            <span style="font-size: 3rem;">📸</span>
+                            <span>Feed de video inactivo.<br>Inicia la webcam o selecciona un archivo para procesar.</span>
+                        </div>
+                    </div>
+                    <div class="control-bar">
+                        <button id="webcam-btn" class="btn btn-primary">📹 Activar Webcam</button>
+                        <button id="stop-btn" class="btn btn-secondary" disabled>⏹ Detener</button>
+                        <input type="file" id="video-file-input" accept="video/*" style="display: none;">
+                        <button id="select-video-btn" class="btn btn-secondary">📁 Subir Video Test</button>
+                    </div>
+                    <video id="hidden-video" style="display: none;" loop muted playsinline></video>
+                </div>
+                
+                <div class="glass-panel counter-widget">
+                    <h3 class="counter-title">📈 Peces Contados</h3>
+                    <div class="counter-card salmon">
+                        <span class="counter-card-header">Salmones Detectados</span>
+                        <span id="ws-salmon-count" class="counter-card-value">0</span>
+                    </div>
+                    <div class="counter-card pollock">
+                        <span class="counter-card-header">Pollocks Detectados</span>
+                        <span id="ws-pollock-count" class="counter-card-value">0</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; margin-top: 1rem;">
+                        El tracker asigna un ID único para contar ejemplares sin duplicidades.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ASYNC BATCH VIDEO PROCESSING -->
+        <div id="video-tab" class="tab-content">
+            <div class="glass-panel">
+                <h2 style="margin-bottom: 1.5rem;">Carga y Análisis de Video Completo</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem; max-width: 800px;">
+                    Sube archivos de video capturados por cámaras submarinas. El servidor los procesará asíncronamente cuadro por cuadro aplicando inferencia YOLOv8s y IoU Tracking de forma distribuida en background, asegurando cero bloqueos del sistema.
+                </p>
+                
+                <div id="drop-zone" class="upload-zone">
+                    <span class="upload-icon">📤</span>
+                    <h4 style="font-size: 1.2rem;">Arrastra y suelta tu video aquí</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Soporte para MP4, AVI, MOV o MKV (Máx. 250MB)</p>
+                    <button class="btn btn-primary" style="margin-top: 0.5rem;">Seleccionar Archivo</button>
+                    <input type="file" id="video-upload-input" accept="video/*" style="display: none;">
+                </div>
+
+                <!-- Barra de Progreso -->
+                <div id="video-progress" class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div id="progress-fill" class="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progress-status-text">Procesando video...</span>
+                        <span id="progress-pct-text">0%</span>
+                    </div>
+                </div>
+
+                <!-- Resultados del Video -->
+                <div id="video-results" style="display: none; margin-top: 2rem; animation: fadeIn 0.4s ease;">
+                    <h3 class="counter-title" style="margin-bottom: 1.5rem;">📊 Resultados del Análisis</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="counter-card salmon">
+                            <span class="counter-card-header">Total Salmones Trackeados</span>
+                            <span id="video-salmon-count" class="counter-card-value">0</span>
+                        </div>
+                        <div class="counter-card pollock">
+                            <span class="counter-card-header">Total Pollocks Trackeados</span>
+                            <span id="video-pollock-count" class="counter-card-value">0</span>
+                        </div>
+                    </div>
+                    <p id="video-frames-processed" style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1.5rem; text-align: center;">
+                        Frames totales procesados: 0
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: ACTIVE LEARNING -->
+        <div id="active-tab" class="tab-content">
+            <div class="glass-panel">
+                <div class="active-learning-header">
+                    <div>
+                        <h2>Capturas de Aprendizaje Activo (Active Learning)</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
+                            Frames retenidos en producción donde la confianza de YOLO se ubicó entre 0.35 y 0.55.
+                        </p>
+                    </div>
+                    <button id="sync-btn" class="btn btn-accent">🔄 Sincronizar con Label Studio</button>
+                </div>
+
+                <!-- Grid de Imágenes -->
+                <div id="active-learning-grid" class="al-grid">
+                    <!-- Cards se inyectarán vía JS -->
+                </div>
+                
+                <div id="al-empty-placeholder" class="placeholder-text" style="position: static; margin: 4rem auto; display: none;">
+                    <span style="font-size: 2.5rem;">🎉</span>
+                    <span>No hay imágenes dudosas pendientes.<br>El modelo trabaja con confianza robusta en el feed actual.</span>
+                </div>
+
+                <!-- Consola de Logs -->
+                <div id="console-logs" class="console-container">
+                    <span class="console-header">Terminal de Salida (Logs de Sincronización)</span>
+                    <div id="console-output" class="console-box">Corriendo sincronizador...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend Scripting Logic -->
+    <script>
+        // Tab Navigation
+        const navItems = document.querySelectorAll('.nav-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const tabTitleText = document.getElementById('tab-title-text');
+        const tabSubtitleText = document.getElementById('tab-subtitle-text');
+
+        const tabSubtitles = {
+            'realtime-tab': ['Monitoreo en Tiempo Real', 'Inferencia fluida por WebSockets usando ONNX Runtime & IoU Tracker'],
+            'video-tab': ['Procesador de Video Asíncrono', 'Análisis secuencial por lotes en background con barra de progreso'],
+            'active-tab': ['Bucle de Aprendizaje Activo', 'Administrador de capturas por incertidumbre y sincronización con el servidor de etiquetado']
+        };
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const targetTab = item.getAttribute('data-tab');
+                
+                navItems.forEach(i => i.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                item.classList.add('active');
+                document.getElementById(targetTab).classList.add('active');
+                
+                const [title, sub] = tabSubtitles[targetTab];
+                tabTitleText.textContent = title;
+                tabSubtitleText.textContent = sub;
+                
+                // Cargar imágenes si es la pestaña de active learning
+                if (targetTab === 'active-tab') {
+                    loadActiveLearningImages();
+                }
+            });
+        });
+
+        // --- TAB 1: WEBSOCKET / CANVAS STREAMING LOGIC ---
+        const canvas = document.getElementById('video-canvas');
+        const ctx = canvas.getContext('2d');
+        const webcamBtn = document.getElementById('webcam-btn');
+        const selectVideoBtn = document.getElementById('select-video-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const hiddenVideo = document.getElementById('hidden-video');
+        const videoFileInput = document.getElementById('video-file-input');
+        const canvasPlaceholder = document.getElementById('canvas-placeholder');
+        
+        const wsSalmonCount = document.getElementById('ws-salmon-count');
+        const wsPollockCount = document.getElementById('ws-pollock-count');
+
+        let wsConnection = null;
+        let animationFrameId = null;
+        let streamSource = null; // 'webcam' o 'video'
+        let localStream = null;
+
+        webcamBtn.addEventListener('click', async () => {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                hiddenVideo.srcObject = localStream;
+                hiddenVideo.play();
+                streamSource = 'webcam';
+                initStreaming();
+            } catch (err) {
+                alert("No se pudo acceder a la webcam: " + err);
+            }
+        });
+
+        selectVideoBtn.addEventListener('click', () => {
+            videoFileInput.click();
+        });
+
+        videoFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                }
+                const url = URL.createObjectURL(file);
+                hiddenVideo.srcObject = null;
+                hiddenVideo.src = url;
+                hiddenVideo.play();
+                streamSource = 'video';
+                initStreaming();
+            }
+        });
+
+        stopBtn.addEventListener('click', stopStreaming);
+
+        function initStreaming() {
+            canvasPlaceholder.style.display = 'none';
+            webcamBtn.disabled = true;
+            selectVideoBtn.disabled = true;
+            stopBtn.disabled = false;
+            
+            // Inicializar contadores locales
+            wsSalmonCount.textContent = "0";
+            wsPollockCount.textContent = "0";
+
+            // Establecer conexión WebSocket
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsConnection = new WebSocket(`${wsProtocol}//${window.location.host}/detect/ws`);
+            wsConnection.binaryType = 'arraybuffer';
+
+            wsConnection.onopen = () => {
+                console.log("[WS] Conexión abierta con el backend.");
+                streamFrames();
+            };
+
+            wsConnection.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.error) {
+                    console.error("[WS ERROR]", data.error);
+                    return;
+                }
+                
+                // Redibujar frame con detecciones
+                drawFrame(data.tracks);
+                
+                // Actualizar contadores
+                wsSalmonCount.textContent = data.counts.Salmon;
+                wsPollockCount.textContent = data.counts.Pollock;
+            };
+
+            wsConnection.onerror = (e) => console.error("[WS ERROR]", e);
+            wsConnection.onclose = () => {
+                console.log("[WS] Conexión cerrada.");
+                stopStreaming();
+            };
+        }
+
+        function stopStreaming() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (wsConnection) {
+                wsConnection.close();
+                wsConnection = null;
+            }
+            
+            hiddenVideo.pause();
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            hiddenVideo.src = "";
+            hiddenVideo.srcObject = null;
+
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasPlaceholder.style.display = 'flex';
+            
+            webcamBtn.disabled = false;
+            selectVideoBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+
+        function streamFrames() {
+            if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) return;
+
+            // Sincronizar dimensiones del canvas
+            if (hiddenVideo.videoWidth > 0) {
+                if (canvas.width !== hiddenVideo.videoWidth) {
+                    canvas.width = hiddenVideo.videoWidth;
+                    canvas.height = hiddenVideo.videoHeight;
+                }
+                
+                // Dibujar el frame actual a un canvas temporal oculto para exportar a JPEG
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+                
+                tempCanvas.toBlob((blob) => {
+                    if (blob && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                        blob.arrayBuffer().then((buffer) => {
+                            wsConnection.send(buffer);
+                        });
+                    }
+                    // Loop a ~12 FPS
+                    setTimeout(streamFrames, 80);
+                }, 'image/jpeg', 0.6);
+            } else {
+                requestAnimationFrame(streamFrames);
+            }
+        }
+
+        function drawFrame(tracks) {
+            // Dibujar video original
+            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+            
+            // Dibujar cajas y etiquetas de tracks activos
+            tracks.forEach(track => {
+                const [x1, y1, x2, y2] = track.box;
+                const w = x2 - x1;
+                const h = y2 - y1;
+                
+                const isSalmon = track.class_name === "Salmon";
+                const color = isSalmon ? '#ff7b7b' : '#38bdf8';
+                
+                // Bounding Box
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, w, h);
+                
+                // Label background
+                ctx.fillStyle = color;
+                const label = `#${track.track_id} ${track.class_name} (${(track.confidence * 100).toFixed(0)}%)`;
+                ctx.font = "bold 14px Outfit, sans-serif";
+                const textWidth = ctx.measureText(label).width;
+                ctx.fillRect(x1 - 1, y1 - 24, textWidth + 12, 24);
+                
+                // Label text
+                ctx.fillStyle = "#000";
+                ctx.fillText(label, x1 + 5, y1 - 7);
+            });
+        }
+
+        // --- TAB 2: ASYNC BATCH VIDEO PROCESSING LOGIC ---
+        const dropZone = document.getElementById('drop-zone');
+        const videoUploadInput = document.getElementById('video-upload-input');
+        const videoProgress = document.getElementById('video-progress');
+        const progressFill = document.getElementById('progress-fill');
+        const progressStatusText = document.getElementById('progress-status-text');
+        const progressPctText = document.getElementById('progress-pct-text');
+        const videoResults = document.getElementById('video-results');
+        
+        const videoSalmonCount = document.getElementById('video-salmon-count');
+        const videoPollockCount = document.getElementById('video-pollock-count');
+        const videoFramesProcessed = document.getElementById('video-frames-processed');
+
+        dropZone.addEventListener('click', () => videoUploadInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--accent-salmon)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = 'var(--panel-border)';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--panel-border)';
+            const file = e.dataTransfer.files[0];
+            if (file) handleVideoUpload(file);
+        });
+
+        videoUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleVideoUpload(file);
+        });
+
+        function handleVideoUpload(file) {
+            videoResults.style.display = 'none';
+            videoProgress.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressPctText.textContent = '0%';
+            progressStatusText.textContent = 'Subiendo video...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/detect/video', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                progressStatusText.textContent = 'Video cargado. Procesando en cola...';
+                pollTaskStatus(data.task_id);
+            })
+            .catch(err => {
+                alert("Fallo de subida: " + err.message);
+                videoProgress.style.display = 'none';
+            });
+        }
+
+        function pollTaskStatus(taskId) {
+            const interval = setInterval(() => {
+                fetch(`/task/${taskId}`)
+                .then(res => res.json())
+                .then(task => {
+                    if (task.status === 'processing') {
+                        progressStatusText.textContent = 'Analizando frames en backend...';
+                        progressFill.style.width = `${task.progress}%`;
+                        progressPctText.textContent = `${task.progress}%`;
+                    } else if (task.status === 'completed') {
+                        clearInterval(interval);
+                        progressFill.style.width = '100%';
+                        progressPctText.textContent = '100%';
+                        progressStatusText.textContent = 'Completado con éxito.';
+                        
+                        // Mostrar resultados
+                        videoSalmonCount.textContent = task.results.counts.Salmon;
+                        videoPollockCount.textContent = task.results.counts.Pollock;
+                        videoFramesProcessed.textContent = `Frames totales analizados: ${task.results.total_frames_processed}`;
+                        
+                        setTimeout(() => {
+                            videoProgress.style.display = 'none';
+                            videoResults.style.display = 'block';
+                        }, 800);
+                    } else if (task.status === 'failed') {
+                        clearInterval(interval);
+                        alert("Error en el procesamiento: " + task.error);
+                        videoProgress.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    clearInterval(interval);
+                    console.error(err);
+                });
+            }, 1000);
+        }
+
+        // --- TAB 3: ACTIVE LEARNING LOOP LOGIC ---
+        const alGrid = document.getElementById('active-learning-grid');
+        const alEmptyPlaceholder = document.getElementById('al-empty-placeholder');
+        const syncBtn = document.getElementById('sync-btn');
+        const consoleLogs = document.getElementById('console-logs');
+        const consoleOutput = document.getElementById('console-output');
+
+        function loadActiveLearningImages() {
+            alGrid.innerHTML = '';
+            alEmptyPlaceholder.style.display = 'none';
+
+            fetch('/active-learning/images')
+            .then(res => res.json())
+            .then(images => {
+                if (images.length === 0) {
+                    alEmptyPlaceholder.style.display = 'flex';
+                    return;
+                }
+                
+                images.forEach(img => {
+                    const card = document.createElement('div');
+                    card.className = 'al-card';
+                    card.innerHTML = `
+                        <div class="al-img-container">
+                            <img class="al-img" src="${img.url}" alt="Fish Capture">
+                            <span class="al-badge">Confianza: ${parseFloat(img.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="al-details">
+                            <span class="al-title">${img.species} (Dudoso)</span>
+                            <span class="al-meta">${img.name.split('_')[1] ? new Date(parseInt(img.name.split('_')[1]) * 1000).toLocaleString() : 'N/A'}</span>
+                        </div>
+                    `;
+                    alGrid.appendChild(card);
+                });
+            })
+            .catch(err => console.error(err));
+        }
+
+        syncBtn.addEventListener('click', () => {
+            syncBtn.disabled = true;
+            consoleLogs.style.display = 'flex';
+            consoleOutput.textContent = "Iniciando sincronizador en el servidor...\n";
+
+            fetch('/active-learning/sync', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                consoleOutput.textContent += data.logs || "Completado sin logs.";
+                syncBtn.disabled = false;
+                // Recargar grid (debería estar vacío o reducido)
+                setTimeout(loadActiveLearningImages, 2000);
+            })
+            .catch(err => {
+                consoleOutput.textContent += "\n[ERROR] Falló la llamada: " + err.message;
+                syncBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -6,10 +6,46 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import cv2
+import numpy as np
+
+
+def _validate_coco_schema(coco: Dict[str, Any], path: Path):
+    """
+    Valida que el archivo JSON COCO tenga la estructura mínima requerida para Salmon-CV.
+    """
+    for key in ["images", "annotations", "categories"]:
+        if key not in coco:
+            raise ValueError(f"Esquema COCO inválido en {path.name}: Falta la clave '{key}'.")
+            
+    # Validar categorías
+    categories = coco["categories"]
+    cat_names = {cat.get("name") for cat in categories if "name" in cat}
+    required_classes = {"Salmon", "Pollock"}
+    if not required_classes.intersection(cat_names):
+        print(f"[WARNING] El archivo {path.name} no contiene las clases esperadas ('Salmon', 'Pollock'). Categorías encontradas: {cat_names}")
+
+    # Validar imágenes
+    for img in coco["images"]:
+        for field in ["id", "file_name", "width", "height"]:
+            if field not in img:
+                raise ValueError(f"Esquema COCO inválido en {path.name} (Imagen ID: {img.get('id', 'desconocido')}): Falta el campo '{field}'.")
+
+    # Validar anotaciones
+    for ann in coco["annotations"]:
+        for field in ["id", "image_id", "category_id", "bbox"]:
+            if field not in ann:
+                raise ValueError(f"Esquema COCO inválido en {path.name} (Anotación ID: {ann.get('id', 'desconocido')}): Falta el campo '{field}'.")
+        bbox = ann["bbox"]
+        if not isinstance(bbox, list) or len(bbox) != 4:
+            raise ValueError(f"Esquema COCO inválido en {path.name} (Anotación ID: {ann.get('id')}): 'bbox' debe ser una lista de 4 elementos. Encontrado: {bbox}")
+
 
 def _load_coco(coco_json_path: Path) -> Dict[str, Any]:
     with coco_json_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        coco_data = json.load(f)
+    _validate_coco_schema(coco_data, coco_json_path)
+    return coco_data
 
 
 def _index_coco(
@@ -94,6 +130,65 @@ def _split_clip_jsons(
     }
 
 
+def _build_salmon_crop_bank(clip_jsons, annotated_root, frames_dirname):
+    """
+    Recopila recortes de salmones de todas las imágenes de entrenamiento para el Copy-Paste sintético.
+    """
+    salmon_bank = []
+    print("[INFO] Recopilando banco de salmones de forma dinámica...")
+    for coco_path in clip_jsons:
+        coco = _load_coco(coco_path)
+        images_by_id, ann_by_image_id, cat_name_by_id = _index_coco(coco)
+        clip_dir = coco_path.parent
+        frames_dir = clip_dir / frames_dirname
+        
+        for img_info in images_by_id.values():
+            anns = ann_by_image_id.get(img_info["id"], [])
+            for ann in anns:
+                cat_id = ann.get("category_id")
+                class_name = cat_name_by_id.get(cat_id, str(cat_id))
+                
+                if class_name == "Salmon":
+                    bbox = ann.get("bbox")
+                    if bbox and len(bbox) == 4:
+                        file_name = img_info.get("file_name")
+                        img_path = _resolve_image_path(frames_dir, file_name)
+                        if img_path and img_path.exists():
+                            img = cv2.imread(str(img_path))
+                            if img is not None:
+                                x, y, w, h = [int(round(v)) for v in bbox]
+                                h_img, w_img = img.shape[:2]
+                                x1 = max(0, x)
+                                y1 = max(0, y)
+                                x2 = min(w_img, x + w)
+                                y2 = min(h_img, y + h)
+                                
+                                if (x2 - x1) > 15 and (y2 - y1) > 15:
+                                    crop = img[y1:y2, x1:x2].copy()
+                                    salmon_bank.append(crop)
+    print(f"[INFO] Recopilados {len(salmon_bank)} recortes de salmón para el Copy-Paste sintético.")
+    return salmon_bank
+
+def _box_overlap(box1, box2):
+    """
+    Calcula la superposición entre dos cajas en formato absolute [x1, y1, x2, y2].
+    """
+    x1_1, y1_1, x2_1, y2_1 = box1
+    x1_2, y1_2, x2_2, y2_2 = box2
+    
+    x1_i = max(x1_1, x1_2)
+    y1_i = max(y1_1, y1_2)
+    x2_i = min(x2_1, x2_2)
+    y2_i = min(y2_1, y2_2)
+    
+    if x2_i <= x1_i or y2_i <= y1_i:
+        return 0.0
+        
+    inter = (x2_i - x1_i) * (y2_i - y1_i)
+    area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
+    area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
+    return inter / min(area1, area2)
+
 def prepare_yolo_dataset(
     annotated_data_root_relpath: str,
     output_yolo_root_relpath: str,
@@ -145,6 +240,10 @@ def prepare_yolo_dataset(
     if abs((train_ratio + val_ratio + test_ratio) - 1.0) > 1e-6:
         raise ValueError("Los porcentajes de split deben sumar 1.0")
 
+    # Recopilar el banco de salmones de entrenamiento
+    salmon_bank = _build_salmon_crop_bank(clip_jsons, annotated_root, frames_dirname)
+    random.seed(seed)
+
     # Procesar cada clip y dividir sus frames cronológicamente
     for coco_path in clip_jsons:
         coco = _load_coco(coco_path)
@@ -182,7 +281,24 @@ def prepare_yolo_dataset(
                 img_height = int(img_info["height"])
 
                 anns = ann_by_image_id.get(img_info["id"], [])
-                yolo_lines: List[str] = []
+                
+                # --- VALIDACIÓN PREVENTIVA DE CORRUPCIÓN EN IMÁGENES ---
+                if not img_path.exists() or img_path.stat().st_size == 0:
+                    raise ValueError(f"Fallo de Calidad de Datos: La imagen {img_path.name} no existe o está vacía (0 bytes).")
+                
+                # Intentar leer la imagen para verificar que no esté corrupta
+                test_img = cv2.imread(str(img_path))
+                if test_img is None:
+                    raise ValueError(f"Fallo de Calidad de Datos: La imagen {img_path.name} está corrupta o tiene un formato inválido.")
+                
+                img = None
+                if split_name == "train" and copy_images:
+                    img = test_img
+
+                # Registrar coordenadas absolutas originales primero
+                img_boxes = []
+                img_classes = []
+                has_salmon = False
 
                 for ann in anns:
                     cat_id = ann.get("category_id")
@@ -197,11 +313,96 @@ def prepare_yolo_dataset(
                         continue
 
                     cls_idx = class_to_idx[class_name]
-                    x_c, y_c, w, h = _coco_bbox_to_yolo(bbox, img_width, img_height)
+                    if class_name == "Salmon":
+                        has_salmon = True
+                    
+                    x, y, w, h = bbox
+                    img_boxes.append([x, y, x + w, y + h])
+                    img_classes.append(cls_idx)
 
-                    yolo_lines.append(
-                        f"{cls_idx} {x_c:.6f} {y_c:.6f} {w:.6f} {h:.6f}"
-                    )
+                # --- 1. APLICAR COPY-PASTE SINTÉTICO (Solo en entrenamiento, si no tiene Salmon) ---
+                if split_name == "train" and not has_salmon and len(salmon_bank) > 0 and img is not None:
+                    # Decidir si pegamos con 85% de probabilidad para balancear la clase minoritaria (Salmon)
+                    if random.random() < 0.85:
+                        num_pastes = random.randint(1, 3)
+                        for _ in range(num_pastes):
+                            crop = random.choice(salmon_bank)
+                            ch, cw = crop.shape[:2]
+                            
+                            # Escalar aleatoriamente el recorte del salmón
+                            scale = random.uniform(0.7, 1.3)
+                            n_ch, n_cw = int(round(ch * scale)), int(round(cw * scale))
+                            if n_ch < 10 or n_cw < 10 or n_ch >= img_height or n_cw >= img_width:
+                                continue
+                                
+                            crop_resized = cv2.resize(crop, (n_cw, n_ch), interpolation=cv2.INTER_LINEAR)
+                            
+                            # Intentar colocar en una posición sin solapamiento
+                            placed = False
+                            for _ in range(15):
+                                px = random.randint(0, img_width - n_cw)
+                                py = random.randint(0, img_height - n_ch)
+                                candidate_box = [px, py, px + n_cw, py + n_ch]
+                                
+                                # Comprobar solapamiento
+                                overlap = False
+                                for existing in img_boxes:
+                                    if _box_overlap(candidate_box, existing) > 0.05:
+                                        overlap = True
+                                        break
+                                
+                                if not overlap:
+                                    # Pegar usando mezcla de bordes suaves
+                                    mask = np.ones((n_ch, n_cw), dtype=np.float32)
+                                    mask[0, :] = 0.2
+                                    mask[-1, :] = 0.2
+                                    mask[:, 0] = 0.2
+                                    mask[:, -1] = 0.2
+                                    mask = cv2.GaussianBlur(mask, (3, 3), 0)
+                                    
+                                    for c in range(3):
+                                        img[py:py+n_ch, px:px+n_cw, c] = (
+                                            mask * crop_resized[:, :, c] + (1.0 - mask) * img[py:py+n_ch, px:px+n_cw, c]
+                                        ).astype(np.uint8)
+                                        
+                                    img_boxes.append(candidate_box)
+                                    img_classes.append(0)  # 0 es la clase Salmon
+                                    placed = True
+                                    break
+
+                # Convertir las coordenadas absolutas finales a formato YOLO normalizado
+                yolo_bboxes = []
+                for box in img_boxes:
+                    x1, y1, x2, y2 = box
+                    w = x2 - x1
+                    h = y2 - y1
+                    xc = x1 + w / 2.0
+                    yc = y1 + h / 2.0
+                    yolo_bboxes.append([xc / img_width, yc / img_height, w / img_width, h / img_height])
+
+                # --- 2. APLICAR ALBUMENTATIONS UNDERWATER AUGMENTATIONS (Solo en entrenamiento) ---
+                if split_name == "train" and img is not None and len(yolo_bboxes) > 0:
+                    try:
+                        import albumentations as A
+                        transform = A.Compose([
+                            A.CLAHE(clip_limit=2.0, tile_grid_size=(8, 8), p=0.6),
+                            A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.5),
+                            A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=15, val_shift_limit=10, p=0.5),
+                            A.GaussianBlur(blur_limit=(3, 5), p=0.3),
+                        ], bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
+                        
+                        transformed = transform(image=img, bboxes=yolo_bboxes, class_labels=img_classes)
+                        img = transformed['image']
+                        yolo_bboxes = transformed['bboxes']
+                        img_classes = transformed['class_labels']
+                    except Exception as e:
+                        print(f"[WARNING] Falló la aumentación de Albumentations: {e}")
+
+                # Generar líneas de salida en formato YOLO texto
+                yolo_lines = []
+                for cls_idx, bbox in zip(img_classes, yolo_bboxes):
+                    xc, yc, w, h = bbox
+                    yolo_lines.append(f"{cls_idx} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}")
 
                 clip_name = clip_dir.name
                 out_image_name = f"{clip_name}__{img_path.name}"
@@ -210,8 +411,12 @@ def prepare_yolo_dataset(
                 out_image_path = output_root / "images" / split_name / out_image_name
                 out_label_path = output_root / "labels" / split_name / out_label_name
 
+                # Guardar imagen y etiquetas
                 if copy_images:
-                    shutil.copy2(img_path, out_image_path)
+                    if split_name == "train" and img is not None:
+                        cv2.imwrite(str(out_image_path), img)
+                    else:
+                        shutil.copy2(img_path, out_image_path)
 
                 with out_label_path.open("w", encoding="utf-8") as f:
                     for line in yolo_lines:

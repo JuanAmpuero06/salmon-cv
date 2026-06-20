@@ -1,0 +1,6 @@
+outs:
+- md5: dcd13c8c493f9509de56e22a49327db2.dir
+  size: 3091525204
+  nfiles: 1832
+  hash: md5
+  path: noaa_salmon_pollock_2019_2020
